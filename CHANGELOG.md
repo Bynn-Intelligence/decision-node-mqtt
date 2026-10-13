@@ -5,7 +5,7 @@ All notable changes to decision-node-mqtt are listed here. The format follows
 [Semantic Versioning](https://semver.org/). Each release's notes are its
 section below.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-10-13
 
 The first release of decision-node-mqtt, the MQTT bridge for DecisionNode.
 
