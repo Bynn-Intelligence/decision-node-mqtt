@@ -1,0 +1,137 @@
+name: release
+
+# Every push to main runs the dry run: a snapshot of every archive, checked,
+# and published nowhere. Then, while the repository variable RELEASE_ENABLED
+# is "true" and the commit message does not contain [skip publish], the
+# release job releases the push: it picks the version from CHANGELOG.md
+# (.github/scripts/release-version.sh), dates its entry, pushes that commit
+# and the tag vX.Y.Z back to main with the default GITHUB_TOKEN (which starts
+# no workflow; the commit carries [skip publish] as a second guard), then
+# publishes the GitHub release (archives, checksums.txt and its keyless
+# cosign signature) and the multi-arch image to
+# ghcr.io/bynn-intelligence/decision-node-mqtt, tagged with the version and
+# latest and signed keylessly.
+#
+# The version: a top entry "## [X.Y.Z] - Unreleased", written by hand with
+# its notes, is released as X.Y.Z; after it, each push releases the next
+# patch with an entry noting a maintenance release. The release notes are
+# the version's section of CHANGELOG.md, never commit subjects.
+#
+# What this workflow needs, set up by the repository's owners:
+# - Repository variable RELEASE_ENABLED: "true" turns the release job on.
+# - Environment "release" with a deployment rule that allows branch main.
+# - No secret: the release, the tag push and the image push use the
+#   workflow's own GITHUB_TOKEN, and the signatures its OIDC token.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      # The CHANGELOG's top entry is a version, and its section the notes.
+      - name: Check the version and the release notes
+        shell: bash
+        run: |
+          top="$(grep -m1 -E '^## \[' CHANGELOG.md)"
+          version="$(sed -nE 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/p' <<<"$top")"
+          if [ -z "$version" ]; then
+            echo "::error::the CHANGELOG's top entry is not a version: $top"
+            exit 1
+          fi
+          .github/scripts/release-notes.sh "$version" > "$RUNNER_TEMP/notes.md"
+          git ls-files -z | xargs -0 python3 .github/scripts/check-published.py --readme README.md "$RUNNER_TEMP/notes.md"
+          echo "version $version"
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        with:
+          distribution: goreleaser
+          version: v2.18.2
+          args: release --snapshot --clean --skip=sign,publish
+
+  release:
+    if: vars.RELEASE_ENABLED == 'true' && !contains(github.event.head_commit.message, '[skip publish]')
+    needs: dry-run
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      packages: write
+      # Keyless cosign signatures of the checksums and the image.
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The version is written into the CHANGELOG, committed and tagged, and
+      # both are pushed back to main before anything is built. A push that
+      # main has moved past fails here, and the next push releases instead.
+      - name: Pick the version, date it and push the tag
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version="$(.github/scripts/release-version.sh)"
+          git add CHANGELOG.md
+          git commit -m "Release v${version} [skip publish]"
+          git tag "v${version}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main "v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: Release notes from the CHANGELOG
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          .github/scripts/release-notes.sh "${VERSION}" > "$RUNNER_TEMP/notes.md"
+          python3 .github/scripts/check-published.py "$RUNNER_TEMP/notes.md"
+      - uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        with:
+          distribution: goreleaser
+          version: v2.18.2
+          args: release --clean --release-notes ${{ runner.temp }}/notes.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          build-args: VERSION=${{ steps.version.outputs.version }}
+          tags: |
+            ghcr.io/bynn-intelligence/decision-node-mqtt:${{ steps.version.outputs.version }}
+            ghcr.io/bynn-intelligence/decision-node-mqtt:latest
+      - name: Sign the image
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: cosign sign --yes "ghcr.io/bynn-intelligence/decision-node-mqtt@${DIGEST}"

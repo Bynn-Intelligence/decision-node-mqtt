@@ -1,0 +1,17 @@
+# Changelog
+
+All notable changes to decision-node-mqtt are listed here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/). Each release's notes are its
+section below.
+
+## [0.1.0] - Unreleased
+
+The first release of decision-node-mqtt, the MQTT bridge for DecisionNode.
+
+- Answers requests published on MQTT topics, `decisionnode/request/+` by default: JSON requests with a state, questions, images by URL or base64, a model and boosters, or the bytes of a JPEG, PNG or WebP image asked about by its topic's profile.
+- Publishes each answer on `decisionnode/response/<id>`, or on an MQTT 5 request's own response topic with its correlation data, the API's decision exactly as sent, or an error with its `error_type`.
+- Limits on payload size, requests in flight and requests per topic; a request over a limit is answered at once with an error, never queued.
+- TLS with a CA file and a client certificate, a broker user name and password, and the API key from the environment or a file only.
+- `/healthz` and Prometheus metrics on `/metrics`.
+- Static binaries for Linux (x86-64, arm64, armv7, armv6), macOS and Windows, with checksums and a keyless signature, and a container image for linux/amd64, linux/arm64 and linux/arm/v7.

@@ -11,6 +11,19 @@ device ◀── decisionnode/response/<id> ── broker ◀──────�
 
 One static binary for Linux (x86-64, arm64, armv7, armv6), macOS and Windows, or a container image for linux/amd64, arm64 and arm/v7.
 
+## Install
+
+- **Binaries:** every [release](https://github.com/Bynn-Intelligence/decision-node-mqtt/releases/latest) has an archive for Linux (x86-64, arm64, armv7, armv6), macOS (x86-64, arm64) and Windows (x86-64, arm64), with `checksums.txt` and a keyless signature of it.
+- **Container image:** `docker pull ghcr.io/bynn-intelligence/decision-node-mqtt:latest`, for linux/amd64, linux/arm64 and linux/arm/v7, also tagged with each version.
+
+Verify the checksums' signature with [cosign](https://docs.sigstore.dev):
+
+```sh
+cosign verify-blob --certificate checksums.txt.pem --signature checksums.txt.sig \
+  --certificate-identity-regexp 'https://github.com/Bynn-Intelligence/decision-node-mqtt/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
+```
+
 ## Quickstart with mosquitto
 
 You need an API key from the DecisionNode console and Docker.

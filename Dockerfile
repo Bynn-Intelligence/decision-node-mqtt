@@ -14,6 +14,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
     go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o /out/decision-node-mqtt ./cmd/decision-node-mqtt
 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+LABEL org.opencontainers.image.source=https://github.com/Bynn-Intelligence/decision-node-mqtt \
+      org.opencontainers.image.description="MQTT bridge for DecisionNode, the decision engine" \
+      org.opencontainers.image.licenses=MIT
 COPY --from=build /out/decision-node-mqtt /usr/local/bin/decision-node-mqtt
 COPY config.example.yaml /etc/decision-node-mqtt/config.yaml
 ENV DN_MQTT_CONFIG=/etc/decision-node-mqtt/config.yaml
