@@ -1,0 +1,4 @@
+/dist/
+/decision-node-mqtt
+*.test
+*.out

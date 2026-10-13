@@ -1,0 +1,20 @@
+# A broker and the bridge on one machine. Run from this directory:
+#   DECISIONNODE_API_KEY=dn_live_... docker compose up --build
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  bridge:
+    build: ..
+    depends_on:
+      - mosquitto
+    environment:
+      DECISIONNODE_API_KEY: ${DECISIONNODE_API_KEY:?set DECISIONNODE_API_KEY}
+      DN_MQTT_URL: mqtt://mosquitto:1883
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

@@ -1,0 +1,60 @@
+# decision-node-mqtt configuration. Every setting is optional; these are
+# the defaults unless a comment says otherwise. The API key is never written
+# here: set DECISIONNODE_API_KEY, or point api.key_file at a file holding it.
+
+api:
+  # base_url: https://api.decisionnode.com
+  # key_file: /run/secrets/decisionnode_api_key
+  # model: decisionnode-moe
+  timeout: 30s        # each attempt
+  # retries: 2
+
+mqtt:
+  url: mqtt://localhost:1883    # or mqtts://broker:8883, ws://, wss://
+  # client_id: decision-node-mqtt-<hostname>
+  # username: bridge
+  # password_file: /run/secrets/mqtt_password   # or DN_MQTT_PASSWORD
+  # ca_file: /etc/ssl/broker-ca.pem             # instead of the system's roots
+  # cert_file: /etc/ssl/bridge.pem              # a client certificate
+  # key_file: /etc/ssl/bridge-key.pem
+  keep_alive: 30s
+  qos: 1
+  subscribe:
+    - decisionnode/request/+
+  response_prefix: decisionnode/response
+  # An MQTT 5 request's own response topic is used only when it matches one
+  # of these (by default the response prefix's), so a device can never make
+  # the bridge publish anywhere else.
+  # response_topics:
+  #   - decisionnode/response/#
+
+limits:
+  max_payload_bytes: 4194304   # 4 MiB
+  max_in_flight: 16            # requests answered at once, all topics together
+  rate_per_second: 1           # per request topic
+  burst: 5
+  max_topics: 10000            # request topics with a rate limit held at once
+  request_timeout: 90s         # one request, its retries included
+
+http:
+  listen: ":8080"              # /healthz and /metrics
+
+# A profile is a request a topic's payloads fill in: a camera can publish
+# only JPEG bytes, and the profile asks the questions about them.
+profiles:
+  gate:
+    state: Camera 2 at the north gate of the loading yard.
+    image_id: gate
+    questions:
+      vehicle:
+        type: truth
+        instructions: Is a vehicle waiting at the gate?
+      people:
+        type: number
+        instructions: How many people are in the picture?
+        min: 0
+        max: 20
+
+topics:
+  - filter: decisionnode/request/gate-north
+    profile: gate
