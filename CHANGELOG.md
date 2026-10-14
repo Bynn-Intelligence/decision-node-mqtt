@@ -5,6 +5,12 @@ All notable changes to decision-node-mqtt are listed here. The format follows
 [Semantic Versioning](https://semver.org/). Each release's notes are its
 section below.
 
+## [0.1.1] - Unreleased
+
+A maintenance release; the bridge itself is unchanged.
+
+- The container image is built without a build provenance attestation. The image and the release archives are still signed keylessly with cosign, as in 0.1.0.
+
 ## [0.1.0] - 2026-10-13
 
 The first release of decision-node-mqtt, the MQTT bridge for DecisionNode.
