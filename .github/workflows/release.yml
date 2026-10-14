@@ -121,12 +121,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+      # No provenance, build record or build summary (decided 2026-10-14): with
+      # them the action records the GitHub event that started the run, and a
+      # push event names the pusher's email address, in the image's public
+      # attestation and in the run's log. The image is signed with cosign.
       - id: image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: "false"
+          DOCKER_BUILD_SUMMARY: "false"
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          provenance: false
           build-args: VERSION=${{ steps.version.outputs.version }}
           tags: |
             ghcr.io/bynn-intelligence/decision-node-mqtt:${{ steps.version.outputs.version }}
