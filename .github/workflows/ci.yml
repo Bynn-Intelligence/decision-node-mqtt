@@ -41,8 +41,8 @@ jobs:
         with:
           version: v2.14.0
 
-  # Every binary GoReleaser would ship, built as a snapshot and published
-  # nowhere.
+  # Every binary GoReleaser would ship, built as an unsigned snapshot and
+  # published nowhere.
   snapshot:
     runs-on: ubuntu-latest
     steps:
@@ -62,7 +62,7 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.18.2
-          args: release --snapshot --clean
+          args: release --snapshot --clean --skip=sign
       - name: Check the archives
         shell: bash
         run: |
