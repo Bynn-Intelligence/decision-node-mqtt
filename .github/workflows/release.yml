@@ -121,15 +121,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      # No provenance, build record or build summary (decided 2026-10-14): with
-      # them the action records the GitHub event that started the run, and a
-      # push event names the pusher's email address, in the image's public
-      # attestation and in the run's log. The image is signed with cosign.
+      # No provenance, build record, build summary or provenance in the build's
+      # metadata (decided 2026-10-14): each records the GitHub event that started
+      # the run, and a push event names the pusher's email address, in the
+      # image's public attestation or in the run's log (the action prints the
+      # metadata). The image is signed with cosign.
       - id: image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: "false"
           DOCKER_BUILD_SUMMARY: "false"
+          BUILDX_METADATA_PROVENANCE: disabled
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
