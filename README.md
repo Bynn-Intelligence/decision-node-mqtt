@@ -83,7 +83,7 @@ A request payload is either a JSON request or the bytes of an image.
 | `questions` | The questions, by id, as the DecisionNode API takes them: `truth`, `choice`, `score`, `number`, `point` and `box` |
 | `images` | Up to 16 images: `{"id": "gate", "url": "https://..."}`, or `{"id": "gate", "data": "<base64>", "media_type": "image/jpeg"}` |
 | `model` | `decisionnode-moe` (the default) or `decisionnode-flash` |
-| `boosters` | Specialist readings of the images, added as evidence: names such as `["age"]`, or objects for boosters with settings, such as `{"name": "bynn_segment", "options": {"prompt": "landing pad"}}`. See [Boosters](#boosters-for-robots-and-drones). |
+| `boosters` | Specialist readings of the images, added as evidence: names such as `["age"]`, or objects for boosters with settings, such as `{"name": "bynn_segment", "options": {"prompt": "landing pad"}}`. See [Boosters](#boosters). |
 | `fallback` | `false` to wait for the requested model rather than be answered by another |
 | `profile` | The name of a profile to start from, instead of the topic's |
 
@@ -119,9 +119,23 @@ topics:
 mosquitto_pub -h localhost -t decisionnode/request/gate-north -f snapshot.jpg
 ```
 
-### Boosters for robots and drones
+### Boosters
 
-Boosters are specialist models that read the images before the model answers. Their readings come back in the answer's `decision.evidence`, one per image. Two are made for machines that move:
+Boosters are specialist models that read the images before the model answers. Their readings come back in the answer's `decision.evidence`, one per image. Up to 4 a request, each a name or an object `{"name", "images", "require", "options", "timeout_ms"}`:
+
+| Booster | Reads | Options |
+|---|---|---|
+| `age` | The age of the person in a picture | none |
+| `ai_generated` | Whether a picture was made by a generator | none |
+| `face_detection` | The faces in a picture: how many, and a `box` and a `confidence` per face | none |
+| `face_recognition` | The faces in a picture matched against a collection: per match a `box`, a `score` and the item's `reference`, with your `label` or a public figure's `name` | `collection` (required: `celebrities`, or the id of one of your workspace's face collections), `threshold` 0 to 1 (0.5) |
+| `ocr` | The text a picture shows | `prompt` |
+| `bynn_depth` (Depth Vision) | Distances in meters | `grid_size` |
+| `bynn_segment` (Segment Vision) | Where the things named in `prompt` are | `prompt` (required), `max_instances`, `min_score`, `polygon_points`, `depth` |
+
+#### Robots and drones
+
+Depth Vision and Segment Vision are made for machines that move:
 
 - **Depth Vision** (`bynn_depth`): distances in meters. `ahead` is the nearest obstacle straight ahead (the floor left out, `null` when there is none), `directions` the same in 7 vertical strips from left to right, `ground` whether a floor was found and left out, and `grid` a grid of the whole picture (option `grid_size`, 2 to 16, default 8) with `depth_min`, `depth_max` and `depth_median`.
 - **Segment Vision** (`bynn_segment`): finds what its required `prompt` option names, one phrase or a list of 1 to 4. Each match in `instances` has its `label`, `score`, `box`, `polygon`, `area`, `centroid`, `opening` (the hole of a gate, doorway or ring, else `null`), and with depth on (the default) its `depth` and `size_m` in meters. Coordinates are fractions of the picture from its top left; descriptive phrases ("orange H landing pad") match better than one word. Other options: `max_instances` (1 to 16, default 8), `min_score` (0 to 1, default 0.25), `polygon_points` (3 to 64, default 24) and `depth` (default `true`).
