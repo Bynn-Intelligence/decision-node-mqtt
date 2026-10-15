@@ -5,6 +5,14 @@ All notable changes to decision-node-mqtt are listed here. The format follows
 [Semantic Versioning](https://semver.org/). Each release's notes are its
 section below.
 
+## [0.1.2] - Unreleased
+
+Documentation for boosters; the bridge itself is unchanged.
+
+- The README lists every booster a request or a profile can name, with their options: `age`, `ai_generated`, `face_detection`, `face_recognition` (`collection` and `threshold`), `ocr`, and for robots and drones Depth Vision (`bynn_depth`) and Segment Vision (`bynn_segment`).
+- A booster with settings is an object, `{"name", "images", "require", "options", "timeout_ms"}`, in a JSON request or in a profile's `boosters` in the configuration file; `config.example.yaml` has a `drone` profile with Depth Vision and Segment Vision.
+- The container image is built without a build provenance attestation, as in 0.1.1. The image and the release archives are signed keylessly with cosign.
+
 ## [0.1.1] - 2026-10-14
 
 A maintenance release; the bridge itself is unchanged.
