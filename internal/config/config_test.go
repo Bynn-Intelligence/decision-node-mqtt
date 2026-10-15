@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,6 +88,34 @@ func TestEmptyFileUsesDefaults(t *testing.T) {
 	}
 	if c.APIKey != "k" || c.MQTT.Subscribe[0] != "decisionnode/request/+" || c.Limits.MaxInFlight != 16 || !strings.HasPrefix(c.MQTT.ClientID, "decision-node-mqtt-") {
 		t.Fatalf("%+v", c)
+	}
+}
+
+func TestProfileBoosters(t *testing.T) {
+	p := write(t, "c.yaml", `
+profiles:
+  drone:
+    image_id: front
+    boosters:
+      - bynn_depth
+      - name: bynn_segment
+        options:
+          prompt: [purple gate, orange H landing pad]
+          max_instances: 4
+    questions:
+      clear: {type: truth, instructions: "Is the path straight ahead clear for 2 meters?"}
+`)
+	c, err := Load(p, env(map[string]string{"DECISIONNODE_API_KEY": "k"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(c.Profiles["drone"].Boosters)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `["bynn_depth",{"name":"bynn_segment","options":{"max_instances":4,"prompt":["purple gate","orange H landing pad"]}}]`
+	if string(b) != want {
+		t.Fatalf("boosters: %s", b)
 	}
 }
 

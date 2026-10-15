@@ -54,6 +54,25 @@ profiles:
         instructions: How many people are in the picture?
         min: 0
         max: 20
+  # A robot's or a drone's front camera, with Depth Vision (distances in meters) and
+  # Segment Vision (where the things named in its prompt are). The distances are
+  # estimates from one picture, for decisions and planning, never a safety stop.
+  drone:
+    state: Front camera of the inspection drone.
+    image_id: front
+    boosters:
+      - bynn_depth
+      - name: bynn_segment
+        options:
+          prompt: [purple gate, orange H landing pad]
+    questions:
+      clear:
+        type: truth
+        instructions: Is the path straight ahead clear for at least 2 meters?
+      gate:
+        type: point
+        instructions: The centre of the opening of the purple gate.
+        units: normalized
 
 topics:
   - filter: decisionnode/request/gate-north

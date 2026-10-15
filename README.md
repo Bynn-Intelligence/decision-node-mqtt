@@ -83,7 +83,7 @@ A request payload is either a JSON request or the bytes of an image.
 | `questions` | The questions, by id, as the DecisionNode API takes them: `truth`, `choice`, `score`, `number`, `point` and `box` |
 | `images` | Up to 16 images: `{"id": "gate", "url": "https://..."}`, or `{"id": "gate", "data": "<base64>", "media_type": "image/jpeg"}` |
 | `model` | `decisionnode-moe` (the default) or `decisionnode-flash` |
-| `boosters` | Specialist readings of the images, added as evidence, such as `["age"]` |
+| `boosters` | Specialist readings of the images, added as evidence: names such as `["age"]`, or objects for boosters with settings, such as `{"name": "bynn_segment", "options": {"prompt": "landing pad"}}`. See [Boosters](#boosters-for-robots-and-drones). |
 | `fallback` | `false` to wait for the requested model rather than be answered by another |
 | `profile` | The name of a profile to start from, instead of the topic's |
 
@@ -118,6 +118,43 @@ topics:
 ```sh
 mosquitto_pub -h localhost -t decisionnode/request/gate-north -f snapshot.jpg
 ```
+
+### Boosters for robots and drones
+
+Boosters are specialist models that read the images before the model answers. Their readings come back in the answer's `decision.evidence`, one per image. Two are made for machines that move:
+
+- **Depth Vision** (`bynn_depth`): distances in meters. `ahead` is the nearest obstacle straight ahead (the floor left out, `null` when there is none), `directions` the same in 7 vertical strips from left to right, `ground` whether a floor was found and left out, and `grid` a grid of the whole picture (option `grid_size`, 2 to 16, default 8) with `depth_min`, `depth_max` and `depth_median`.
+- **Segment Vision** (`bynn_segment`): finds what its required `prompt` option names, one phrase or a list of 1 to 4. Each match in `instances` has its `label`, `score`, `box`, `polygon`, `area`, `centroid`, `opening` (the hole of a gate, doorway or ring, else `null`), and with depth on (the default) its `depth` and `size_m` in meters. Coordinates are fractions of the picture from its top left; descriptive phrases ("orange H landing pad") match better than one word. Other options: `max_instances` (1 to 16, default 8), `min_score` (0 to 1, default 0.25), `polygon_points` (3 to 64, default 24) and `depth` (default `true`).
+
+Their distances and sizes are estimates from one picture, for decisions and planning, never a safety stop: a robot or a drone keeps stereo cameras or LiDAR for that. Each image a booster reads is one booster call.
+
+A profile for a front camera that publishes JPEG frames:
+
+```yaml
+profiles:
+  drone:
+    state: Front camera of the inspection drone.
+    image_id: front
+    boosters:
+      - bynn_depth
+      - name: bynn_segment
+        options:
+          prompt: [purple gate, orange H landing pad]
+    questions:
+      clear:
+        type: truth
+        instructions: Is the path straight ahead clear for at least 2 meters?
+      gate:
+        type: point
+        instructions: The centre of the opening of the purple gate.
+        units: normalized
+
+topics:
+  - filter: decisionnode/request/drone-front
+    profile: drone
+```
+
+Every booster is listed in the [boosters documentation](https://decisionnode.com/docs/concepts/boosters).
 
 ## Answers
 
